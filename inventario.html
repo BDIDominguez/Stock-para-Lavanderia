@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inventario</title>
+
+<style>
+body{background:#000;color:#fff;margin:0;text-align:center;font-family:Arial}
+#piso{width:85%;padding:8px;margin-top:6px;font-size:19px;background:#111;color:#00e0ff;border:2px solid #00bfff;border-radius:10px;font-weight:bold}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:92%;margin:10px auto}
+.box{background:#111;padding:6px;border-radius:6px;font-size:17px;font-weight:bold}
+.box input{width:100%;font-size:19px;text-align:center;background:#000;border:2px solid #333;color:#00ff8c;border-radius:5px;font-weight:bold;height:30px}
+
+.numPad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:92%;margin:auto;margin-top:6px}
+.numPad button{padding:15px;font-size:21px;background:#242424;color:white;border:none;border-radius:8px;font-weight:bold}
+
+.op{display:flex;justify-content:center;gap:12px;margin-top:6px}
+.op button{padding:10px 18px;font-size:20px;border-radius:8px;border:none;font-weight:bold;background:#444;color:#fff}
+
+.save,.back{width:92%;padding:14px;font-size:21px;border-radius:10px;border:none;font-weight:bold;margin-top:10px}
+.save{background:#00b94d;color:white}
+.back{background:#666;color:white}
+</style>
+</head>
+<body>
+
+<h2 style="margin:8px 0 4px">📥 Inventario por Piso</h2>
+<select id="piso"></select>
+
+<div class="grid">
+ <div class="box">B  <input id="B"  readonly></div>
+ <div class="box">T  <input id="T"  readonly></div>
+ <div class="box">P  <input id="P"  readonly></div>
+
+ <div class="box">SG <input id="SG" readonly></div>
+ <div class="box">SCH<input id="SCH"readonly></div>
+ <div class="box">F  <input id="F"  readonly></div>
+
+ <div class="box">K<input id="K"readonly></div>
+ <div class="box">3SG<input id="3SG"readonly></div>
+ <div class="box">3SCH<input id="3SCH"readonly></div>
+ <div class="box">3K<input id="3K"readonly></div>
+
+ <div class="box" style="grid-column:span 3">OCUP <input id="OC" readonly></div>
+</div>
+
+<div class="numPad">
+ <button onclick="n('1')">1</button><button onclick="n('2')">2</button><button onclick="n('3')">3</button>
+ <button onclick="n('4')">4</button><button onclick="n('5')">5</button><button onclick="n('6')">6</button>
+ <button onclick="n('7')">7</button><button onclick="n('8')">8</button><button onclick="n('9')">9</button>
+ <button onclick="n('0')">0</button><button onclick="add()">+ </button><button onclick="clr()">C</button>
+</div>
+
+<div class="op">
+ <button onclick="prev()">◀</button>
+ <button onclick="next()">▶</button>
+</div>
+
+<button class="save" onclick="guardar()">💾 GUARDAR</button>
+<button class="back" onclick="location.href='index.html'">⬅ VOLVER</button>
+
+<script>
+let L={},camp=["B","T","P","SG","SCH","F","K","3SG","3SCH","3K","OC"],pos=0,edit="B",suma=false;
+
+function loadBase(){
+ fetch("./base.txt").then(r=>r.text()).then(t=>{
+  t.trim().split("\n").slice(1).forEach(l=>{
+   let p=l.split(",")[0];
+   piso.innerHTML+=`<option>${p}</option>`;
+   if(!L[p])L[p]={B:0,T:0,P:0,SG:0,SCH:0,F:0,K:0,"3SG":0,"3SCH":0,"3K":0,OC:0};
+  });
+  if(localStorage.getItem("linv"))L=JSON.parse(localStorage.getItem("linv"));
+  cargarInputs();
+ });
+}
+function cargarInputs(){let p=piso.value,d=L[p];camp.forEach(c=>document.getElementById(c).value=d[c]);}
+
+function n(v){let x=document.getElementById(edit);if(suma){x.value=(+x.value)+(+v);suma=false;}else x.value+=v;}
+function add(){suma=true;} function clr(){document.getElementById(edit).value="";}
+document.querySelectorAll("input").forEach(i=>i.onclick=()=>edit=i.id);
+
+function guardar(){let p=piso.value;camp.forEach(c=>L[p][c]=+document.getElementById(c).value||0);
+localStorage.setItem("linv",JSON.stringify(L));alert("✔ Guardado");}
+
+function next(){pos=(pos+1)%camp.length;edit=camp[pos];}
+function prev(){pos=(pos-1+camp.length)%camp.length;edit=camp[pos];}
+loadBase();
+</script>
+</body>
+</html>
