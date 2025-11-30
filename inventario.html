@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inventario</title>
+<style>
+body{background:#0d1117;color:#eee;margin:0;font-family:Arial;text-align:center}
+select{width:95%;font-size:22px;padding:10px;margin-top:10px;border-radius:10px;background:#1b222c;color:#fff;border:2px solid #046dd6;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px}
+.box{background:#1a1f26;padding:10px;border-radius:10px;font-size:20px;font-weight:bold}
+input{width:100%;text-align:center;font-size:22px;padding:6px;background:#000;border:2px solid #444;color:#0aff96;border-radius:8px;font-weight:bold}
+.numPad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.numPad button,.op{padding:14px;font-size:22px;background:#222;border:none;border-radius:8px;color:white;font-weight:bold}
+.op{background:#005fcc}
+.save{width:95%;padding:16px;margin:14px auto;font-size:22px;border-radius:12px;border:none;background:#00943f;font-weight:bold;color:#fff}
+.back{width:95%;padding:12px;font-size:20px;border-radius:12px;border:none;background:#444;font-weight:bold;color:#fff}
+</style>
+</head>
+<body>
+
+<h2 style="margin-top:15px">📥 CARGA DE INVENTARIO</h2>
+
+<!-- Selección de Piso -->
+<select id="piso"></select>
+
+<!-- Inputs (MISMA ESTRUCTURA QUE index.html EXIGE) -->
+<div class="grid">
+  <div class="box">B  <input id="B"  readonly></div>
+  <div class="box">T  <input id="T"  readonly></div>
+  <div class="box">P  <input id="P"  readonly></div>
+
+  <div class="box">SG  <input id="SG"  readonly></div>
+  <div class="box">SCH <input id="SCH" readonly></div>
+  <div class="box">K   <input id="K"  readonly></div>
+
+  <div class="box">3SG <input id="3SG" readonly></div>
+  <div class="box">3SCH<input id="3SCH"readonly></div>
+  <div class="box">3K  <input id="3K" readonly></div>
+
+  <div class="box" style="grid-column:span 3">OCUP <input id="oc" readonly></div>
+</div>
+
+<!-- Teclado minimizando teclado táctil -->
+<div class="numPad">
+  <button onclick="n('1')">1</button><button onclick="n('2')">2</button><button onclick="n('3')">3</button>
+  <button onclick="n('4')">4</button><button onclick="n('5')">5</button><button onclick="n('6')">6</button>
+  <button onclick="n('7')">7</button><button onclick="n('8')">8</button><button onclick="n('9')">9</button>
+  <button onclick="n('0')">0</button><button onclick="add()">+ </button><button onclick="clr()">C</button>
+</div>
+
+<button class="save" onclick="guardar()">💾 GUARDAR INVENTARIO</button>
+<button class="back" onclick="location.href='index.html'">⬅ VOLVER</button>
+
+<script>
+let L={}, campo="B", suma=false;
+function cargabase(){
+  fetch("base.txt").then(r=>r.text()).then(t=>{
+    const(lines)=t.trim().split("\n").slice(1);
+    let sel=document.getElementById("piso"); sel.innerHTML="";
+    lines.forEach(l=>{
+      let p=l.split(",")[0];
+      sel.innerHTML+=`<option value="${p}">${p}</option>`;
+      if(!L[p]) L[p]={B:0,T:0,P:0,SG:0,SCH:0,K:0,"3SG":0,"3SCH":0,"3K":0,ocupacion:0};
+    });
+    if(localStorage.getItem("linv")) L=JSON.parse(localStorage.getItem("linv"));
+    cargarInputs();
+  });
+}
+function cargarInputs(){
+  let p=document.getElementById("piso").value;
+  let x=L[p];
+  ["B","T","P","SG","SCH","K","3SG","3SCH","3K"].forEach(id=>document.getElementById(id).value=x[id]);
+  document.getElementById("oc").value=x.ocupacion;
+}
+function n(v){
+  let inp=document.getElementById(campo);
+  if(suma){ inp.value=(+inp.value)+(+v); suma=false; }
+  else inp.value+=v;
+}
+function add(){ suma=true; }
+function clr(){ document.getElementById(campo).value=""; }
+document.querySelectorAll("input").forEach(i=>i.onclick=()=>campo=i.id);
+
+function guardar(){
+  let p=document.getElementById("piso").value;
+  L[p]={
+    B:+B.value,T:+T.value,P:+P.value,SG:+SG.value,SCH:+SCH.value,K:+K.value,
+    "3SG":+document.getElementById("3SG").value,"3SCH":+document.getElementById("3SCH").value,"3K":+document.getElementById("3K").value,
+    ocupacion:+oc.value
+  };
+  localStorage.setItem("linv",JSON.stringify(L));
+  alert("✔ Inventario guardado y persistente");
+}
+piso.onchange=cargarInputs; cargabase();
+</script>
+</body>
+</html>
