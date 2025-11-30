@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inventario</title>
+
+<style>
+body{font-family:system-ui;margin:6px}
+h1{text-align:center;font-size:20px;margin-bottom:8px}
+
+.top{display:flex;gap:6px;margin-bottom:6px}
+select{flex:1;padding:6px;font-size:16px;border-radius:6px}
+
+.grid{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:4px;margin-bottom:6px
+}
+.box{
+    border:1px solid #888;border-radius:4px;
+    padding:3px;text-align:center;font-size:14px
+}
+.value{font-weight:bold;font-size:16px}
+.highlight{background:#bef}
+
+.keypad{
+    display:grid;grid-template-columns:repeat(3,1fr);
+    gap:5px;margin:5px 0
+}
+.kp{
+    padding:12px;background:#ddd;font-size:18px;
+    border:none;border-radius:6px
+}
+.rowBtns{display:flex;gap:6px;justify-content:center;margin:4px 0}
+button{border:none;border-radius:6px;font-size:16px;padding:8px 12px}
+.save{background:#0eb000;color:white}
+.back{background:#444;color:white}
+</style>
+</head>
+<body>
+
+<h1>Carga Inventario</h1>
+
+<div class="top">
+  <select id="pisoSel"></select>
+</div>
+
+<div id="grid" class="grid"></div>
+
+<div class="rowBtns">
+  <button id="prev">◀</button>
+  <button id="plus"> + </button>
+  <button id="next">▶</button>
+  <button id="clear">C</button>
+</div>
+
+<div class="keypad" id="keys"></div>
+
+<div class="rowBtns">
+  <button class="save" id="saveBtn">Guardar piso</button>
+  <button class="back" onclick="location.href='index.html'">Volver</button>
+</div>
+
+<script>
+const campos=["B","T","P","SG","SCH","F","K","3SG","3SCH","3K","ocupacion"];
+
+function base(){return JSON.parse(localStorage.getItem("lbase")||"{}");}
+function inv(){return JSON.parse(localStorage.getItem("linv")||"{}");}
+function saveInv(x){localStorage.setItem("linv",JSON.stringify(x));}
+
+function build(){
+    let g=document.getElementById("grid");
+    campos.forEach(c=>{
+        let d=document.createElement("div");
+        d.className="box";
+        d.innerHTML=`${c}<div class="value" id="v_${c}">0</div>`;
+        g.appendChild(d);
+    });
+}
+build();
+
+let pos=0,buffer="";
+
+function highlight(){
+    campos.forEach((c,i)=>{
+        document.getElementById("v_"+c).parentNode.classList.toggle("highlight",i===pos);
+    });
+}
+highlight();
+
+function val(){return Number(document.getElementById("v_"+campos[pos]).innerText||0);}
+function set(n){document.getElementById("v_"+campos[pos]).innerText=n;}
+
+function keypad(){
+    let k=document.getElementById("keys");
+    for(let i=1;i<=9;i++){
+        let b=document.createElement("button");
+        b.className="kp";b.innerText=i;
+        b.onclick=()=>{buffer+=i;display()};
+        k.appendChild(b);
+    }
+    let z=document.createElement("button");
+    z.className="kp";z.style.gridColumn="span 2";z.innerText="0";
+    z.onclick=()=>{buffer+="0";display()};
+    k.appendChild(z);
+
+    let del=document.createElement("button");
+    del.className="kp";del.innerText="⌫";
+    del.onclick=()=>{buffer=buffer.slice(0,-1);display()};
+    k.appendChild(del);
+}
+keypad();
+
+document.getElementById("plus").onclick=()=>{buffer+="+";display()};
+document.getElementById("prev").onclick=()=>{pos=(pos-1+campos.length)%campos.length;buffer="";highlight()};
+document.getElementById("next").onclick=()=>{pos=(pos+1)%campos.length;buffer="";highlight()};
+document.getElementById("clear").onclick=()=>{buffer="";set(0)};
+
+function display(){
+    let current=val(),n=current;
+    if(buffer.includes("+")){
+        let seg=buffer.split("+").filter(x=>x);
+        let sum=seg.reduce((a,b)=>a+Number(b),0);
+        n=current+sum;
+    }else if(buffer!==""){
+        n=Number(buffer);
+    }
+    set(n);
+}
+
+document.getElementById("saveBtn").onclick=()=>{
+    let p=document.getElementById("pisoSel").value;
+    if(!p)return alert("Seleccione piso");
+    let m=inv(); m[p]={};
+    campos.forEach(c=>m[p][c]=Number(document.getElementById("v_"+c).innerText));
+    saveInv(m); alert("✔ Guardado");
+};
+
+function loadBase(){
+    let b=base(),sel=document.getElementById("pisoSel");
+    sel.innerHTML="";
+    Object.keys(b).forEach(p=>sel.innerHTML+=`<option>${p}</option>`);
+}
+loadBase();
+</script>
+</body>
+</html>
