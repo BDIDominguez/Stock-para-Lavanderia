@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de Stock</title>
+
+<style>
+body{font-family:system-ui;padding:12px}
+button{
+    width:100%;padding:14px;margin-top:10px;
+    font-size:18px;border:none;border-radius:6px;
+    background:#0d6efd;color:white;font-weight:bold;
+}
+h1{font-size:22px;text-align:center;margin-bottom:14px}
+pre{white-space:pre;font-size:16px}
+#resultado{margin-top:20px;background:#eee;padding:10px;border-radius:6px}
+</style>
+</head>
+<body>
+
+<h1>Control de Stock</h1>
+
+<button onclick="location.href='inventario.html'">📥 Cargar Inventario</button>
+<button onclick="calcular()">📊 Calcular Necesidad</button>
+<button onclick="resetAll()" style="background:#b30000">🗑 Borrar Inventario</button>
+
+<pre id="resultado"></pre>
+
+<script>
+function loadBase(){
+    return JSON.parse(localStorage.getItem("lbase")||"{}");
+}
+function loadInv(){
+    return JSON.parse(localStorage.getItem("linv")||"{}");
+}
+
+async function calcular(){
+    let base=loadBase();
+    let inv=loadInv();
+    if(Object.keys(base).length===0){
+        alert("No hay base cargada aún desde inventario.html");
+        return;
+    }
+    let out="Resultado calculado:\n---------------------\n";
+
+    for(let piso of Object.keys(base)){
+        if(!inv[piso]) continue;  // solo pisos cargados
+
+        let i=inv[piso];
+        let b=base[piso];
+
+        let king=b.king*2;       // 2 sabanas por cama
+        let queen=b.queen*2;
+        let twin=b.twin*2;
+        let sg3 =b["3ra_sabana"]=="T"? b.king:0;   // 3° sabana = 1 por cama
+        let sch3=b["3ra_sabana"]=="T"? b.queen:0;
+        let k3  =b["3ra_sabana"]=="T"? b.twin:0;
+
+        out+=`PISO ${piso}\n`;
+        out+=`B:${i.B}  T:${i.T}  P:${i.P}\n`;
+        out+=`SG:${i.SG}/${king}  SCH:${i.SCH}/${queen}  F:${i.F}\n`;
+        out+=`3SG:${i["3SG"]}/${sg3}  3SCH:${i["3SCH"]}/${sch3}  3K:${i["3K"]}/${k3}\n\n`;
+    }
+    document.getElementById("resultado").innerText=out;
+}
+
+function resetAll(){
+    if(confirm("¿Seguro? Se borra inventario guardado.")){
+        localStorage.removeItem("linv");
+        alert("Inventario eliminado.");
+    }
+}
+</script>
+</body>
+</html>
