@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control Stock</title>
+
+<style>
+body{background:#0c0c0c;color:#eee;margin:0;text-align:center;font-family:Arial}
+h1{font-size:21px;margin-top:12px;font-weight:800}
+
+button{width:92%;padding:14px;margin:8px auto;display:block;font-size:21px;border:none;font-weight:bold;color:white;border-radius:10px}
+.calc{background:#0094ff;} .inv{background:#00af4d;} .del{background:#c73838;}
+
+table{width:100%;margin-top:10px;border-collapse:collapse;font-size:14px;min-width:900px}
+th,td{border:1px solid #333;padding:5px}
+th{background:#005acc;font-weight:bold}
+tr:nth-child(even){background:#161616} tr:nth-child(odd){background:#1f1f1f}
+td.piso{font-weight:bold;color:#03e0ff}
+.need{color:#00ff8c;font-weight:800;font-size:16px}
+.have{color:#aaa;font-size:11px}
+.zero{color:#666}
+</style>
+</head>
+<body>
+
+<h1>📦 CONTROL DE STOCK</h1>
+<button class="calc" onclick="calcular()">📊 CALCULAR</button>
+<button class="inv" onclick="location.href='inventario.html'">✍ CARGAR INVENTARIO</button>
+<button class="del" onclick="resetInv()">🗑 RESETEAR INVENTARIO</button>
+
+<div id="out"></div>
+
+<script>
+// BASE ────────────────────────────────────────────────
+async function B(){
+ const t=await fetch("./base.txt").then(r=>r.text());
+ let L=t.trim().split("\n").map(l=>l.split(",")); let head=L.shift(); let o={};
+ L.forEach(r=>o[r[0]]={king:+r[1],queen:+r[2],twin:+r[3],tercera:r[4]=="T"});
+ return o;
+}
+// INV ────────────────────────────────────────────────
+function inv(){return JSON.parse(localStorage.getItem("linv")||"{}");}
+function req(h,v){return h>v?`<b class='need'>${h-v}</b> <span class='have'>(${v})</span>`:`<span class='zero'>0</span> <span class='have'>(${v})</span>`;}
+
+// CALCULAR ───────────────────────────────────────────
+async function calcular(){
+ const base=await B(); const i=inv();
+ let H=`
+<table>
+<tr>
+<th>Piso</th><th>B</th><th>T</th><th>P</th>
+<th>SG</th><th>SCH</th><th>K</th>
+<th>F</th><th>3SG</th><th>3SCH</th><th>3K</th>
+</tr>`;
+
+ for(let p in i){
+  if(!base[p]) continue;
+  if(+i[p].OC<=0) continue; // 🔥 Mostrar solo pisos activos
+
+  let d=base[p], v=i[p];
+
+  let b=2*v.OC, t=2*v.OC, pis=16;
+  let sg=d.queen*2, sch=d.twin*2, k=d.king*2;
+  let f=30;
+  let sg3=d.tercera?d.queen:0, sch3=d.tercera?d.twin:0, k3=d.tercera?d.king:0;
+
+  H+=`
+<tr>
+<td class='piso'>${p}</td>
+<td>${req(b ,v.B )}</td>
+<td>${req(t ,v.T )}</td>
+<td>${req(pis,v.P )}</td>
+
+<td>${req(sg ,v.SG)}</td>
+<td>${req(sch,v.SCH)}</td>
+<td>${req(k ,v.K)}</td>
+
+<td>${req(f ,v.F )}</td>            <!-- FUNDAS -->
+<td>${req(sg3 ,v["3SG"])}</td>
+<td>${req(sch3,v["3SCH"])}</td>
+<td>${req(k3 ,v["3K"])}</td>
+</tr>`;
+ }
+ H+=`</table>`;
+ document.getElementById("out").innerHTML=H;
+}
+
+function resetInv(){
+ if(confirm("¿Borrar inventario?")){localStorage.removeItem("linv");location.reload();}
+}
+</script>
+</body>
+</html>
