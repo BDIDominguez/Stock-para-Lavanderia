@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de Stock</title>
+
+<style>
+body{background:#0c0c0c;color:#eee;margin:0;font-family:Arial;text-align:center}
+h1{font-size:22px;margin-top:10px;font-weight:bold}
+
+button{width:92%;padding:15px;margin:10px auto;display:block;font-size:22px;
+border-radius:10px;border:none;font-weight:bold;color:white;}
+.calc{background:#0094ff;} .inv{background:#00b94d;} .del{background:#cc3232;}
+
+table{width:100%;margin-top:18px;border-collapse:collapse;font-size:15px;min-width:900px}
+th,td{border:1px solid #333;padding:6px}
+th{background:#0055cc;font-weight:bold}
+tr:nth-child(even){background:#161616;} tr:nth-child(odd){background:#1f1f1f;}
+td.piso{color:#00e4ff;font-weight:bold}
+.need{color:#00ff8a;font-weight:bold;font-size:17px}
+.have{color:#bbb;font-size:11px}
+.zero{color:#777}
+</style>
+</head>
+<body>
+
+<h1>📦 CONTROL DE STOCK — CANTIDADES A LLEVAR</h1>
+
+<button class="calc" onclick="calcular()">📊 CALCULAR</button>
+<button class="inv" onclick="location.href='inventario.html'">✍ CARGAR INVENTARIO</button>
+<button class="del" onclick="resetInv()">🗑 BORRAR INVENTARIO</button>
+
+<div id="output"></div>
+
+<script>
+// CARGA BASE.TXT
+async function getBase(){
+  const txt = await fetch("./base.txt").then(r=>r.text());
+  let L = txt.trim().split("\n").map(l=>l.split(","));
+  let h=L.shift(), B={};
+
+  L.forEach(r=>{
+    B[r[0]]={
+      king:+r[h.indexOf("king")],
+      queen:+r[h.indexOf("queen")],
+      twin:+r[h.indexOf("twin")],
+      tercera:r[h.indexOf("3ra_sabana")]=="T"
+    };
+  });
+  return B;
+}
+
+// INVENTARIO DE LOCALSTORAGE
+function inv(){ return JSON.parse(localStorage.getItem("linv")||"{}"); }
+
+// FORMATEO
+function show(req,have){
+  let falt=req-have;
+  if(falt<=0) return `<span class='zero'>0</span> <span class='have'>(${have})</span>`;
+  return `<span class='need'>${falt}</span> <span class='have'>(${have})</span>`;
+}
+
+// CALCULAR
+async function calcular(){
+  const base=await getBase(), I=inv();
+  let H=`
+<table>
+<tr>
+<th>Piso</th>
+<th>B</th><th>T</th><th>P</th>
+<th>SG</th><th>SCH</th><th>K</th>
+<th>3SG</th><th>3SCH</th><th>3K</th>
+</tr>`;
+
+  for(const p in I){
+    if(!base[p]) continue;
+    let d=base[p], v=I[p];
+
+    let reqB  = 2*v.OC;
+    let reqT  = 2*v.OC;
+    let reqP  = 16;
+    let reqSG = d.queen*2;
+    let reqSCH= d.twin*2;
+    let reqK  = d.king*2;
+
+    let req3SG = d.tercera?d.queen:0;
+    let req3SCH= d.tercera?d.twin:0;
+    let req3K  = d.tercera?d.king:0;
+
+    H+=`
+<tr>
+<td class='piso'>${p}</td>
+<td>${show(reqB ,v.B )}</td>
+<td>${show(reqT ,v.T )}</td>
+<td>${show(reqP ,v.P )}</td>
+<td>${show(reqSG ,v.SG)}</td>
+<td>${show(reqSCH,v.SCH)}</td>
+<td>${show(reqK ,v.K )}</td>
+<td>${show(req3SG ,v["3SG"])}</td>
+<td>${show(req3SCH,v["3SCH"])}</td>
+<td>${show(req3K ,v["3K"])}</td>
+</tr>`;
+  }
+
+  H+="</table>";
+  document.getElementById("output").innerHTML=H;
+}
+
+function resetInv(){
+  if(confirm("¿Borrar todo inventario guardado?")){
+    localStorage.removeItem("linv");
+    location.reload();
+  }
+}
+</script>
+
+</body>
+</html>
