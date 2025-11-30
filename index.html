@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de Stock</title>
+
+<style>
+body{font-family:system-ui;padding:18px}
+h1{text-align:center;margin-bottom:22px;font-size:26px}
+
+button{
+    width:100%;padding:14px;margin-top:12px;font-size:20px;
+    border:none;border-radius:8px;font-weight:bold;color:white;
+}
+#inv{background:#0066ff}
+#cal{background:#00a82d}
+#clr{background:#b50000}
+pre{white-space:pre-wrap;font-size:17px;margin-top:14px;padding:12px;background:#efefef;border-radius:6px}
+</style>
+</head>
+
+<body>
+
+<h1>Control de Stock</h1>
+
+<button id="inv" onclick="location.href='inventario.html'">📥 Cargar Inventario</button>
+<button id="cal" onclick="calcular()">📊 Calcular</button>
+<button id="clr" onclick="borrar()">🗑 Reiniciar Inventario</button>
+
+<pre id="salida"></pre>
+
+<script>
+function loadBase(){return JSON.parse(localStorage.getItem("lbase")||"{}")}
+function loadInv(){return JSON.parse(localStorage.getItem("linv")||"{}")}
+
+function calcular(){
+    let base=loadBase(),inv=loadInv()
+    if(Object.keys(base).length===0)return alert("⚠ No hay base cargada")
+
+    let txt="📊 Resultado\n---------------------\n\n"
+
+    Object.keys(base).forEach(p=>{
+        if(!inv[p]) return
+        let i=inv[p],b=base[p]
+
+        // 2 por cama, 3ra = 1 por cama si "T"
+        let SG=b.king*2, SCH=b.queen*2, F=30  // total fundas arbitrario
+        let SG3=b["3ra_sabana"]=="T"?b.king:0
+        let SCH3=b["3ra_sabana"]=="T"?b.queen:0
+        let K3=b["3ra_sabana"]=="T"?b.twin:0
+
+        txt+=`PISO ${p}\n`
+        txt+=`Baños: ${i.B}\nTurcas: ${i.T}\nPisitos: ${i.P}\n\n`
+        txt+=`Sab.G: ${i.SG}/${SG}\nSab.CH: ${i.SCH}/${SCH}\nFundas: ${i.F}/${F}\n\n`
+        txt+=`3G: ${i["3SG"]}/${SG3} | 3CH: ${i["3SCH"]}/${SCH3} | 3K: ${i["3K"]}/${K3}\n\n---\n\n`
+    })
+
+    document.getElementById("salida").innerText=txt
+}
+
+function borrar(){
+    if(confirm("¿Eliminar inventario cargado?
