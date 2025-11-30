@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de Stock - Tabla</title>
+<style>
+  :root{
+    --bg:#0b0b0b;
+    --card:#0f1720;
+    --accent:#0b7bff;
+    --ok:#00b050;
+    --danger:#d32f2f;
+    --text:#eee;
+    --muted:#bbb;
+    --rowA:#0f1620;
+    --rowB:#12161a;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial; -webkit-font-smoothing:antialiased}
+  .wrap{padding:14px;max-width:960px;margin:0 auto}
+
+  h1{font-size:20px;margin:6px 0 12px;text-align:center}
+
+  /* botones grandes y separados (móvil-friendly) */
+  .btn{display:block;width:100%;padding:14px 12px;border-radius:10px;border:0;font-size:18px;font-weight:700;color:white;margin:10px 0}
+  .btn-primary{background:var(--accent)}
+  .btn-danger{background:var(--danger)}
+  .btn-secondary{background:#555}
+
+  /* contenedor de la tabla con scroll horizontal en móvil */
+  .tablewrap{background:transparent;overflow:auto;border-radius:8px;padding:6px 0}
+
+  table{width:100%;border-collapse:collapse;min-width:900px /* asegura scroll en pantallas pequeñas */;}
+  th,td{padding:8px 10px;border:1px solid #233; text-align:center; font-size:15px}
+  th{background:#08345f;color:white;position:sticky;top:0}
+  tr:nth-child(odd){background:var(--rowA)}
+  tr:nth-child(even){background:var(--rowB)}
+  td.piso{font-weight:800;color:var(--accent);}
+
+  .small{font-size:13px;color:var(--muted);text-align:center;margin-top:6px}
+  /* resaltado cuando hay valor a llevar (opcional) */
+  .need-positive{color:#00ff7f;font-weight:700}
+  .need-zero{color:#999}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📦 Control de Stock — Tabla de Envío</h1>
+
+    <!-- botones -->
+    <button class="btn btn-primary" onclick="calcular()">📊 Mostrar cantidades a llevar</button>
+    <button class="btn btn-secondary" onclick="location.href='inventario.html'">✏️ Ir a Inventario (cargar/editar)</button>
+    <button class="btn btn-danger" onclick="borrar()" title="Borra todo el inventario guardado">🗑 Borrar inventario</button>
+
+    <div id="mensaje" class="small">Cargando base y datos...</div>
+
+    <div class="tablewrap" id="tablaWrap" style="margin-top:10px">
+      <!-- tabla se inyecta aquí -->
+    </div>
+
+    <div class="small">Solo se muestran los pisos que tengan inventario guardado y que existan en base.txt</div>
+  </div>
+
+<script>
+/*
+  index.html mejorado:
+  - carga base.txt automáticamente (y lo guarda en localStorage lbase)
+  - lee inventario (linv)
+  - calcula "a llevar" según reglas:
+      B, T => 2 * ocupacion
+      P => 16 por piso
+      SG => king * 2
+      SCH => (queen + twin) * 2
+      F => 30 (por piso)
+      3SG => king * 1 (si 3ra_sabana == 'T')
+      3SCH => (queen + twin) * 1 (si 3ra_sabana == 'T')
+      3K => 0 (queda 0 por defecto; ajustable)
+  - muestra tabla con valores max(0, requerido - inventariado)
+*/
+
+async function cargarBaseSiFalta(){
+  if(localStorage.getItem('lbase')) return;
+  try{
+    const r = await fetch('base.txt');
+    if(!r.ok) throw new Error('base.txt no accesible');
+    const txt = await r.text();
+    const lines = txt.replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(l=>l);
+    if(lines.length<2) return;
+    const headers = lines[0].split(',').map(h=>h.trim());
+    const map = {};
+    for(let i=1;i<lines.length;i++){
+      const cols = lines[i].split(',').map(c=>c.trim());
+      const obj = {};
+      headers.forEach((h,idx)=> obj[h]=cols[idx]||'');
+      const piso = obj.piso;
+      if(!piso) continue;
+      map[piso] = {
+        king: Number(obj.king||0),
+        queen: Number(obj.queen||0),
+        twin: Number(obj.twin||0),
+        "3ra_sabana": String(obj['3ra_sabana']||'F').toUpperCase()
+      };
+    }
+    localStorage.setItem('lbase', JSON.stringify(map));
+    document.getElementById('mensaje').innerText = 'Base cargada.';
+  }catch(e){
+    console.warn(e);
+    document.getElementById('mensaje').innerText = '⚠ Error cargando base.txt (ver consola)';
+  }
+}
+
+function loadBase(){ return JSON.parse(localStorage.getItem('lbase')||'{}'); }
+function loadInv(){ return JSON.parse(localStorage.getItem('linv')||'{}'); }
+
+function borrar(){
+  if(confirm('¿Borrar todo el inventario guardado?')){
+    localStorage.removeItem('linv');
+    document.getElementById('tablaWrap').innerHTML = '';
+    document.getElementById('mensaje').innerText = 'Inventario borrado.';
+  }
+}
+
+function formatCell(n){
+  if(typeof n !== 'number' || isNaN(n)) n = 0;
+  return n<=0 ? `<span class="need-zero">0</span>` : `<span class="need-positive">+${n}</span>`;
+}
+
+async function calcular(){
+  await cargarBaseSiFalta();
+  const base = loadBase();
+  const inv = loadInv();
+
+  // quick checks
+  if(Object.keys(base).length===0){
+    document.getElementById('mensaje').innerText = '⚠ base.txt vacía o no cargada.';
+    return;
+  }
+  if(Object.keys(inv).length===0){
+    document.getElementById('mensaje').innerText = '⚠ No hay inventario cargado. Ve a Inventario y guarda pisos.';
+    document.getElementById('tablaWrap').innerHTML = '';
+    return;
+  }
+
+  // construir tabla
+  let html = '<table role="table" aria-label="tabla de cantidades"><thead><tr>';
+  html += '<th>PISO</th>';
+  html += '<th>B</th><th>T</th><th>P</th>';
+  html += '<th>SG</th><th>SCH</th><th>F</th>';
+  html += '<th>3SG</th><th>3SCH</th><th>3K</th>';
+  html += '</tr></thead><tbody>';
+
+  // iterar pisos del inventario pero sólo mostrar si existen en base
+  const pisosInventario = Object.keys(inv).sort((a,b)=>Number(a)-Number(b));
+  for(const piso of pisosInventario){
+    if(!base[piso]) continue; // solo pisos que estén en base.txt
+
+    const b = base[piso];
+    const i = inv[piso] || {};
+
+    // obtener ocupacion desde inventario (campo 'ocupacion')
+    const occ = Number(i.ocupacion || 0);
+
+    // Requeridos según reglas
+    const reqB = 2 * occ;
+    const reqT = 2 * occ;
+    const reqP = 16; // constante por piso
+
+    const reqSG = b.king * 2;
+    const reqSCH = (b.queen + b.twin) * 2;
+    const reqF = 30;
+
+    const req3SG = (String(b["3ra_sabana"]||'F').toUpperCase() === 'T') ? (b.king * 1) : 0;
+    const req3SCH = (String(b["3ra_sabana"]||'F').toUpperCase() === 'T') ? ((b.queen + b.twin) * 1) : 0;
+    const req3K = 0; // asumido 0 (ajustable si lo necesitás distinto)
+
+    // Cantidades que ya están en inventario (si no existe, 0)
+    const haveB = Number(i.B || 0);
+    const haveT = Number(i.T || 0);
+    const haveP = Number(i.P || 0);
+
+    const haveSG = Number(i.SG || 0);
+    const haveSCH = Number(i.SCH || 0);
+    const haveF = Number(i.F || 0);
+
+    const have3SG = Number(i['3SG'] || 0);
+    const have3SCH = Number(i['3SCH'] || 0);
+    const have3K = Number(i['3K'] || 0);
+
+    // calcular lo a llevar = max(0, requerido - tenido)
+    const needB = Math.max(0, reqB - haveB);
+    const needT = Math.max(0, reqT - haveT);
+    const needP = Math.max(0, reqP - haveP);
+
+    const needSG = Math.max(0, reqSG - haveSG);
+    const needSCH = Math.max(0, reqSCH - haveSCH);
+    const needF = Math.max(0, reqF - haveF);
+
+    const need3SG = Math.max(0, req3SG - have3SG);
+    const need3SCH = Math.max(0, req3SCH - have3SCH);
+    const need3K = Math.max(0, req3K - have3K);
+
+    html += `<tr>
+      <td class="piso">${piso}</td>
+      <td>${formatCell(needB)}</td>
+      <td>${formatCell(needT)}</td>
+      <td>${formatCell(needP)}</td>
+      <td>${formatCell(needSG)}</td>
+      <td>${formatCell(needSCH)}</td>
+      <td>${formatCell(needF)}</td>
+      <td>${formatCell(need3SG)}</td>
+      <td>${formatCell(need3SCH)}</td>
+      <td>${formatCell(need3K)}</td>
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+
+  document.getElementById('tablaWrap').innerHTML = html;
+  document.getElementById('mensaje').innerText = 'Tabla generada — muestra solo lo a llevar';
+}
+
+// auto-cargar base al abrir
+cargarBaseSiFalta();
+</script>
+</body>
+</html>
