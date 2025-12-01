@@ -151,7 +151,8 @@ function clearOnSelect(){
  campos.forEach(c=>document.getElementById(c).classList.remove("active"));
  let input=document.getElementById(campos[pos]);
  input.classList.add("active");
- input.value="";  // ← siempre limpia al seleccionar
+ //input.value="";  // ← siempre limpia al seleccionar
+ input.select();
 }
 
 piso.onchange=loadInputs;
