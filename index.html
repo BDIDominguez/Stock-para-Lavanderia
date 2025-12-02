@@ -15,11 +15,21 @@ button{width:92%;padding:14px;margin:8px auto;display:block;font-size:21px;borde
 table{width:100%;margin-top:10px;border-collapse:collapse;font-size:14px;min-width:900px}
 th,td{border:1px solid #333;padding:5px}
 th{background:#005acc;font-weight:bold}
-tr:nth-child(even){background:#161616} tr:nth-child(odd){background:#1f1f1f}
+tr:nth-child(even){background:#0e1b24} tr:nth-child(odd){background:#1b1b1b}
 td.piso{font-weight:bold;color:#03e0ff}
 .need{color:#00ff8c;font-weight:800;font-size:16px}
 .have{color:#aaa;font-size:11px}
 .zero{color:#666}
+
+/* Columna piso fija al hacer scroll */
+td.piso{
+ background:#00364d !important;
+ color:#00eaff !important;
+ font-weight:bold;
+ position:sticky;
+ left:0;
+ z-index:3;
+}
 </style>
 </head>
 <body>
@@ -51,7 +61,7 @@ async function calcular(){
 <tr>
 <th>Piso</th><th>B</th><th>T</th><th>P</th>
 <th>SG</th><th>SCH</th><th>K</th>
-<th>F</th><th>3SG</th><th>3SCH</th><th>3K</th>
+<th>F</th><th>3SG</th><th>3SCH</th><th>3K</th><th>OC</th>
 </tr>`;
 
  for(let p in i){
@@ -64,6 +74,7 @@ async function calcular(){
   let sg=d.queen*2, sch=d.twin*2, k=d.king*2;
   let f=30;
   let sg3=d.tercera?d.queen:0, sch3=d.tercera?d.twin:0, k3=d.tercera?d.king:0;
+  let oc = v.OC;
 
   H+=`
 <tr>
@@ -80,6 +91,7 @@ async function calcular(){
 <td>${req(sg3 ,v["3SG"])}</td>
 <td>${req(sch3,v["3SCH"])}</td>
 <td>${req(k3 ,v["3K"])}</td>
+<td>${showOC(v["OC"])}</td>
 </tr>`;
  }
  H+=`</table>`;
@@ -88,6 +100,10 @@ async function calcular(){
 
 function resetInv(){
  if(confirm("¿Borrar inventario?")){localStorage.removeItem("linv");location.reload();}
+}
+
+function showOC(v){
+ return `<span class="need">${v}</span>`;
 }
 </script>
 </body>
